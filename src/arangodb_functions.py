@@ -27,64 +27,105 @@ class DatabaseConstants:
 
 def add_nodes(user, artists, recordings):
     db = conn[DatabaseConstants.db_name]
-    aql = "UPSERT @user " \
-          "INSERT @user " \
-          "UPDATE {} IN users"
-
+    # ===============================================
+    # UPSERT Users
+    transaction = '''
+      function(params) {
+          var db = require('@arangodb').db;
+          db._query(`
+            UPSERT @user INSERT @user UPDATE {} IN users`,
+            {user:params.user}
+           )
+    }
+    '''
     bind = {
         "user": {"_key": user},
     }
-    db.AQLQuery(aql, rawResults=False, bindVars=bind)
+    db.transaction({"write": ['users']}, transaction, params=bind)
 
+    # ===============================================
     # UPSERT Artists
-    aql = "FOR doc IN @artists " \
-          "UPSERT {_key: doc._key} " \
-          "INSERT doc " \
-          "UPDATE {} IN artists"
+    transaction = '''
+      function(params) {
+          var db = require('@arangodb').db;
+          db._query(`
+          FOR doc IN @artists
+           UPSERT {_key: doc._key} INSERT doc UPDATE {} IN artists`, 
+            {artists:params.artists}
+           )
+    }
+    '''
     bind = {
         "artists": artists,
     }
-    db.AQLQuery(aql, rawResults=False, bindVars=bind)
+    db.transaction({"exclusive": ['artists']}, transaction, params=bind)
 
+    # ===============================================
     #  UPSERT Recordings
-    aql = "FOR doc IN @recordings  " \
-          "UPSERT {_key: doc._key} " \
-          "INSERT doc " \
-          "UPDATE {} IN recordings "
+    transaction = '''
+      function(params) {
+          var db = require('@arangodb').db;
+          db._query(`
+            FOR doc IN @recordings\n
+            UPSERT {_key: doc._key} INSERT doc UPDATE {} IN recordings`,
+            {recordings:params.recordings}
+           )
+    }
+    '''
     bind = {
         "recordings": recordings
     }
-    db.AQLQuery(aql, rawResults=False, bindVars=bind)
+    db.transaction({"exclusive": ['recordings']}, transaction, params=bind)
 
 
 def add_edges(users_to_artists, users_to_recordings, artists_to_recordings):
     db = conn[DatabaseConstants.db_name]
-    aql = "FOR doc IN @users_to_artists  " \
-          "UPSERT {_key: doc._key} " \
-          "INSERT doc " \
-          "UPDATE {count: doc.count} IN users_to_artists "
+    transaction = '''
+      function(params) {
+          var db = require('@arangodb').db;
+          db._query(`
+            FOR doc IN @users_to_artists  
+            UPSERT {_key: doc._key} INSERT doc UPDATE {count: doc.count} IN users_to_artists`,
+            {users_to_artists:params.users_to_artists}
+           )
+    }
+    '''
     bind = {
         "users_to_artists": users_to_artists,
     }
-    db.AQLQuery(aql, rawResults=False, bindVars=bind)
+    db.transaction({"exclusive": ['users_to_artists']}, transaction, params=bind)
 
-    aql = "FOR doc IN @users_to_recordings  " \
-          "UPSERT {_key: doc._key} " \
-          "INSERT doc " \
-          "UPDATE {count: doc.count} IN users_to_recordings "
+    # ===============================================
+    transaction = '''
+      function(params) {
+          var db = require('@arangodb').db;
+          db._query(`
+            FOR doc IN @users_to_recordings
+            UPSERT {_key: doc._key} INSERT doc UPDATE {count: doc.count} IN users_to_recordings`,
+            {users_to_recordings:params.users_to_recordings}
+           )
+    }
+    '''
     bind = {
         "users_to_recordings": users_to_recordings,
     }
-    db.AQLQuery(aql, rawResults=False, bindVars=bind)
+    db.transaction({"exclusive": ['users_to_recordings']}, transaction, params=bind)
 
-    aql = "FOR doc IN @artists_to_recordings  " \
-          "UPSERT {_key: doc._key} " \
-          "INSERT doc " \
-          "UPDATE {} IN artists_to_recordings "
+    # ===============================================
+    transaction = '''
+      function(params) {
+          var db = require('@arangodb').db;
+          db._query(`
+            FOR doc IN @artists_to_recordings
+            UPSERT {_key: doc._key} INSERT doc UPDATE {count: OLD.count + doc.count} IN artists_to_recordings`,
+            {artists_to_recordings:params.artists_to_recordings}
+           )
+    }
+    '''
     bind = {
         "artists_to_recordings": artists_to_recordings,
     }
-    db.AQLQuery(aql, rawResults=False, bindVars=bind)
+    db.transaction({"exclusive": ['artists_to_recordings']}, transaction, params=bind)
 
 
 def setup():
@@ -95,7 +136,6 @@ def setup():
     db.createCollection(name=DatabaseConstants.users)
     db.createCollection(name=DatabaseConstants.artists)
     db.createCollection(name=DatabaseConstants.recordings)
-    db.createCollection(name=DatabaseConstants.processed_chunks)
 
     db.createCollection("Edges", name=DatabaseConstants.users_to_artists)
     db.createCollection("Edges", name=DatabaseConstants.users_to_recordings)
