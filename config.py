@@ -26,3 +26,8 @@ invalid_field_presence_codes = \
         0,  # nothing present
         2,  # only release present
     ],
+
+AcousticBrainz_max_MBIDs_per_request = 25
+AcousticBrainz_rate_limit_calls = 10
+AcousticBrainz_rate_limit_period = 10  # 10 seconds
+AcousticBrainz_rate_limit_exponential_backoff_max_attempts = 10

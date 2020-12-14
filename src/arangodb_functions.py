@@ -3,11 +3,53 @@
 #  Contact s.p.bobde@student.tudelft.nl or bsharwin@gmail.com for any queries.
 
 from pyArango.connection import *
+from pyArango.database import *
+from pyArango.query import *
 import config
 import inquirer
+import requests
 
 # Global db reference
 conn = Connection(username=config.arangodb_user, password=config.arangodb_password)
+
+
+class CursorProcessor:
+    def __init__(self, aql, batchSize):
+        self.db = conn[DatabaseConstants.db_name]
+        self.aql = aql
+        self.batchSize = batchSize
+        self.cursor_id = None
+        self.has_more = False
+
+    def next_batch(self):
+        if self.cursor_id is None:
+            response = requests \
+                .post("http://localhost:8529/_db/" + DatabaseConstants.db_name + "/_api/cursor",
+                      json={
+                          "query": self.aql,
+                          'batchSize': self.batchSize
+                      })
+            if response.status_code != 201:
+                print(response.json())
+                raise Exception("Cursor AQL did not work")
+
+            response = response.json()
+            self.cursor_id = int(response["id"])
+            self.has_more = response["hasMore"]
+            return response["result"]
+
+        elif self.has_more:
+            url = "http://localhost:8529/_db/" + DatabaseConstants.db_name + "/_api/cursor/" + str(self.cursor_id)
+            response = requests.put(url)
+            if response.status_code != 200:
+                print(response.json())
+                raise Exception("Cursor AQL did not work")
+
+            response = response.json()
+            self.has_more = response["hasMore"]
+            return response["result"]
+        else:
+            return None
 
 
 # We declare this just for refactoring and avoiding incorrect literals.
@@ -18,7 +60,7 @@ class DatabaseConstants:
     artists = "artists"
     releases = "releases"
     recordings = "recordings"
-    processed_chunks = "processed_chunks"
+    ABz_low_level = "AcousticBrainz_LowLevel"
 
     users_to_artists = "users_to_artists"
     users_to_recordings = "users_to_recordings"
@@ -85,7 +127,7 @@ def add_edges(users_to_artists, users_to_recordings, artists_to_recordings):
           var db = require('@arangodb').db;
           db._query(`
             FOR doc IN @users_to_artists  
-            UPSERT {_key: doc._key} INSERT doc UPDATE {count: doc.count} IN users_to_artists`,
+            UPSERT {_key: doc._key} INSERT doc UPDATE {year: doc.year} IN users_to_artists`,
             {users_to_artists:params.users_to_artists}
            )
     }
@@ -101,7 +143,7 @@ def add_edges(users_to_artists, users_to_recordings, artists_to_recordings):
           var db = require('@arangodb').db;
           db._query(`
             FOR doc IN @users_to_recordings
-            UPSERT {_key: doc._key} INSERT doc UPDATE {count: doc.count} IN users_to_recordings`,
+            UPSERT {_key: doc._key} INSERT doc UPDATE {year: doc.year} IN users_to_recordings`,
             {users_to_recordings:params.users_to_recordings}
            )
     }
@@ -117,7 +159,7 @@ def add_edges(users_to_artists, users_to_recordings, artists_to_recordings):
           var db = require('@arangodb').db;
           db._query(`
             FOR doc IN @artists_to_recordings
-            UPSERT {_key: doc._key} INSERT doc UPDATE {count: OLD.count + doc.count} IN artists_to_recordings`,
+            UPSERT {_key: doc._key} INSERT doc UPDATE {} IN artists_to_recordings`,
             {artists_to_recordings:params.artists_to_recordings}
            )
     }
@@ -128,14 +170,33 @@ def add_edges(users_to_artists, users_to_recordings, artists_to_recordings):
     db.transaction({"exclusive": ['artists_to_recordings']}, transaction, params=bind)
 
 
+def get_count_recordings():
+    aql = '''
+        FOR doc IN recordings
+        COLLECT WITH COUNT INTO length
+        RETURN length
+        '''
+    return AQL(aql)
+    # db = conn[DatabaseConstants.db_name]
+    # result = db.AQLQuery(aql, rawResults=True)
+    # return result.__next__()
+
+
+def AQL(aql):
+    db = conn[DatabaseConstants.db_name]
+    result = db.AQLQuery(aql, rawResults=True)
+    return result.__next__()
+
+
 def setup():
     try:
         db = conn.createDatabase("MLHD_processing")
-    except:
+    except Exception:
         db = conn["MLHD_processing"]
     db.createCollection(name=DatabaseConstants.users)
     db.createCollection(name=DatabaseConstants.artists)
     db.createCollection(name=DatabaseConstants.recordings)
+    db.createCollection(name=DatabaseConstants.ABz_low_level)
 
     db.createCollection("Edges", name=DatabaseConstants.users_to_artists)
     db.createCollection("Edges", name=DatabaseConstants.users_to_recordings)

@@ -23,7 +23,6 @@ To setup the working environemnt please do the following:
 ## System Specifications
 The code has been tested using the following system:*
 * Alienware m15 R2
-* 
 * Intel(R) Core(TM) i7-9750H CPU @ 2.60GHz
 * MemTotal:       16149440 kB
 * 2x primary NVMe SSD, 512 GB each. Here is the temporary extraction of the dataset files
@@ -35,7 +34,7 @@ Verify whether the files are downloaded correctly by examining the SHA256 hashes
 Be sure to extract all 18 files in a single folder along with the `MLHD_sha256.txt` file.
 
 Make sure your config file's `dataset_directory` value is properly set up.
-Then run the script `./src/read_dataset.py` and select the option `Verify all files`.
+Then run the script `./src/readMLHD.py` and select the option `Verify all files`.
 You can also verify the hashes for files in a particular range by selecting the option `Verify particular range of files`.
 
 ## Read Files

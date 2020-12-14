@@ -25,15 +25,19 @@ class ScrobbleProcessor:
     def collect_nodes_and_edges_from_df(self, user, df: pd.DataFrame):
         # user to artist; artist should exist
         df1 = df[df.fpc & 0b100 == 0b100] \
-            [['timestamp', 'artist']] \
-            .groupby(['artist']).count() \
+            [['timestamp', 'artist', 'year']] \
+            .groupby(['artist', 'year']).count() \
             .query('timestamp > ' + str(config.listen_lower_threshold)) \
             .reset_index()
 
         self.users_to_artists = df1 \
             .apply(
-            lambda x: {"_from": "users/" + user, "_to": "artists/" + x[0], "count": x[1], "_key": user + "_to_" + x[0]},
-            axis=1) \
+                lambda x: {
+                    "_key": user + "_to_" + x[0],
+                    "_from": "users/" + user, "_to": "artists/" + x[0],
+                    "year": {x[1]: x[2]},
+                },
+                axis=1) \
             .to_numpy().tolist()
 
         self.artists = df1['artist'] \
@@ -42,14 +46,20 @@ class ScrobbleProcessor:
 
         # user to recording; recording should exist
         df2 = df[df.fpc & 0b001 == 0b001] \
-            [['timestamp', 'recording']] \
-            .groupby(['recording']).count() \
+            [['timestamp', 'recording', 'year']] \
+            .groupby(['recording', 'year']).count() \
             .query('timestamp > ' + str(config.listen_lower_threshold)) \
             .reset_index()
 
         self.users_to_recordings = df2 \
-            .apply(lambda x: {"_from": "users/" + user, "_to": "recordings/" + x[0], "count": x[1],
-                              "_key": user + "_to_" + x[0]}, axis=1) \
+            .apply(
+                lambda x: {
+                    "_key": user + "_to_" + x[0],
+                    "_from": "users/" + user, "_to": "recordings/" + x[0],
+                    # "count": x[1],
+                    "year": {x[1]: x[2]},
+
+                }, axis=1) \
             .to_numpy().tolist()
 
         self.recordings = df2['recording'] \
@@ -64,8 +74,12 @@ class ScrobbleProcessor:
             .reset_index()
 
         self.artists_to_recordings = df3 \
-            .apply(lambda x: {"_from": "artists/" + x[0], "_to": "recordings/" + x[1], "_key": x[0] + "_to_" + x[1]},
-                   axis=1) \
+            .apply(
+                lambda x: {
+                    "_from": "artists/" + x[0], "_to": "recordings/" + x[1],
+                    "_key": x[0] + "_to_" + x[1]
+                },
+                axis=1) \
             .to_numpy().tolist()
 
     def insert_nodes(self, ):
