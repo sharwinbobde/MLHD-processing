@@ -7,6 +7,7 @@ import re
 import src.arangodb_functions as af
 import pandas as pd
 import config
+import gc
 
 coding_kernal_matrix = np.array([[0b100], [0b010], [0b001]], dtype=np.uint8)
 
@@ -27,7 +28,7 @@ class ScrobbleProcessor:
         df1 = df[df.fpc & 0b100 == 0b100] \
             [['timestamp', 'artist', 'year']] \
             .groupby(['artist', 'year']).count() \
-            .query('timestamp > ' + str(config.listen_lower_threshold)) \
+            .query('timestamp >= ' + str(config.listen_lower_threshold)) \
             .reset_index()
 
         self.users_to_artists = df1 \
@@ -35,7 +36,7 @@ class ScrobbleProcessor:
                 lambda x: {
                     "_key": user + "_to_" + x[0],
                     "_from": "users/" + user, "_to": "artists/" + x[0],
-                    "year": {x[1]: x[2]},
+                    "years": {"yr_"+str(x[1]): x[2]},
                 },
                 axis=1) \
             .to_numpy().tolist()
@@ -48,7 +49,7 @@ class ScrobbleProcessor:
         df2 = df[df.fpc & 0b001 == 0b001] \
             [['timestamp', 'recording', 'year']] \
             .groupby(['recording', 'year']).count() \
-            .query('timestamp > ' + str(config.listen_lower_threshold)) \
+            .query('timestamp >= ' + str(config.listen_lower_threshold)) \
             .reset_index()
 
         self.users_to_recordings = df2 \
@@ -57,7 +58,7 @@ class ScrobbleProcessor:
                     "_key": user + "_to_" + x[0],
                     "_from": "users/" + user, "_to": "recordings/" + x[0],
                     # "count": x[1],
-                    "year": {x[1]: x[2]},
+                    "years": {"yr_"+str(x[1]): x[2]},
 
                 }, axis=1) \
             .to_numpy().tolist()
@@ -70,7 +71,7 @@ class ScrobbleProcessor:
         df3 = df[df.fpc & 0b101 == 0b101] \
             [['timestamp', 'artist', 'recording']] \
             .groupby(['artist', 'recording']).count() \
-            .query('timestamp > ' + str(config.listen_lower_threshold)) \
+            .query('timestamp >= ' + str(config.listen_lower_threshold)) \
             .reset_index()
 
         self.artists_to_recordings = df3 \
@@ -82,14 +83,18 @@ class ScrobbleProcessor:
                 axis=1) \
             .to_numpy().tolist()
 
-    def insert_nodes(self, ):
-        pass
+    def free_memory(self):
+        del self.filename
 
-    def insert_edges(self, ):
-        # distinct
-        pass
+        del self.artists
+        del self.recordings
+
+        del self.users_to_artists
+        del self.users_to_recordings
+        del self.artists_to_recordings
 
     def start(self):
+        # print("here")
         user = re.search(r'(?!\/)[^\/\.]*(?=\.)', self.filename).group(0)
         df = pd.read_csv(self.filename, sep='\t', header=None)
 
@@ -114,4 +119,4 @@ class ScrobbleProcessor:
         af.add_nodes(user, self.artists, self.recordings)
         af.add_edges(self.users_to_artists, self.users_to_recordings, self.artists_to_recordings)
 
-        exit(0)
+        # print("done")

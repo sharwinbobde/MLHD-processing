@@ -17,17 +17,26 @@ import inquirer
 import pandas as pd
 import hashlib
 import numpy as np
+import multiprocessing
 
 np.printoptions()
 
 
-def threaded_scrobble_processing(filename):
-    # print(filename)
-    processor = ScrobbleProcessor(filename)
+def threaded_scrobble_processing(loc):
+    inner_file = open(loc, 'rb')
+    scrobble_tsv_filename = loc + ".tsv"
+    # unzip scrobble file
+    with gzip.open(inner_file, mode='rb') as f_in:
+        with open(scrobble_tsv_filename, mode="wb") as f_out:
+            shutil.copyfileobj(f_in, f_out)
+
+    # Process files
+    processor = ScrobbleProcessor(scrobble_tsv_filename)
     processor.start()
+    return
 
 
-def read_tar(filename: str, temp_dest: str):
+def process_tar(filename: str, temp_dest: str):
     head, tail = os.path.split(filename)
     temp_dest += '/' + re.search(r"(?!\/)[^\/\.]*(?=\.)", tail).group(0)
     f = open(filename, 'rb')
@@ -35,38 +44,26 @@ def read_tar(filename: str, temp_dest: str):
     # extract large file
     tar = tarfile.open(fileobj=f, mode='r:')  # Unpack tar
     tar.extractall(temp_dest)
-    threads = []
-    count = 0
     scrobble_tars = []
     for tarinfo in tar:
         scrobble_tars.append(tarinfo.name)
-    for scrobble_tar in tqdm(scrobble_tars, ncols=70, smoothing=0.2, disable=False):
+
+    pool_args = []
+    for scrobble_tar in scrobble_tars:
         loc = temp_dest + '/' + scrobble_tar
-        inner_file = open(loc, 'rb')
-        scrobble_tsv_filename = loc + ".tsv"
+        pool_args.append(loc)
 
-        # unzip scrobble file
-        with gzip.open(inner_file, mode='rb') as f_in:
-            with open(scrobble_tsv_filename, mode="wb") as f_out:
-                shutil.copyfileobj(f_in, f_out)
+    print("Running Processes")
+    pool = multiprocessing.Pool(config.processes_per_chunk)
+    for _ in tqdm(pool.imap_unordered(threaded_scrobble_processing, pool_args), total=len(pool_args)):
+        pass
 
-        # process file parallelly
-        t = threading.Thread(target=threaded_scrobble_processing, args=(scrobble_tsv_filename,))
-        count += 1
-        t.start()
-        threads.append(t)
+    pool.close()
+    pool.join()
 
-        # no point processing hundreds of DataFrames in parallel
-        if count > config.threads_per_chunk and count % config.threads_per_chunk == 0:
-            for t in threads[-config.threads_per_chunk: -config.threads_per_chunk + int(config.threads_per_chunk / 2)]:
-                t.join()
-
-    # wait for all threads to end. Wait for all because the upper join() logic can be edited.
-    for t in threads:
-        t.join()
     tar.close()
     # Cleanup
-    # shutil.rmtree(temp_dest, ignore_errors=True)
+    shutil.rmtree(temp_dest, ignore_errors=True)
 
 
 def compare_sha256_digest(file_path, known_digest):
@@ -104,11 +101,11 @@ def verify_dataset_integrity(consider_missing_files=False):
     print("Finished")
 
 
-def verify_dataset_integrity_within_range(start, end, consider_missing_files=False):
+def verify_dataset_integrity_within_range(start_, end_, consider_missing_files=False):
     sha256_df = pd.read_csv(config.dataset_directory + "MLHD_sha256.txt", header=None, sep='\t')
     threads = []
     for index, (file_sha256, name) in sha256_df.iterrows():
-        if index < start or index > end:
+        if index < start_ or index > end_:
             continue
 
         filename = config.dataset_directory + name
@@ -127,7 +124,6 @@ def verify_dataset_integrity_within_range(start, end, consider_missing_files=Fal
     print("Finished")
 
 
-
 if __name__ == '__main__':
     questions = [
         inquirer.List('choice',
@@ -136,7 +132,8 @@ if __name__ == '__main__':
                           ".",
                           'Verify all files',
                           'Verify particular range of files',
-                          'Transfer MLHD to Graph database'
+                          'Transfer MLHD to Graph database',
+                          'Transfer [range of] MLHD files to Graph database'
                       ],
                       carousel=True
                       ),
@@ -163,7 +160,25 @@ if __name__ == '__main__':
             if file == 'MLHD_sha256.txt':
                 continue
 
-            thread = threading.Thread(target=read_tar, args=(dataset_path + file, temp_extract_dest))
+            thread = threading.Thread(target=process_tar, args=(dataset_path + file, temp_extract_dest))
+            print("Starting for " + file)
+            thread.start()
+            # Wait for this chunk to be over
+            thread.join()
+        print("All tasks have Finished")
+
+    elif answers["choice"] == "Transfer [range of] MLHD files to Graph database":
+        dataset_path = config.dataset_directory
+        temp_extract_dest = config.temp_extraction_destination
+        files = [f for f in listdir(dataset_path) if isfile(join(dataset_path, f))]
+
+        start = int(input("Input start index:"))
+        end = int(input("Input end index (included):"))
+
+        for num in range(start, end + 1):
+            file = 'MLHD_' + str(num).zfill(3) + '.tar'
+
+            thread = threading.Thread(target=process_tar, args=(dataset_path + file, temp_extract_dest))
             print("Starting for " + file)
             thread.start()
             # Wait for this chunk to be over

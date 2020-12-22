@@ -127,7 +127,7 @@ def add_edges(users_to_artists, users_to_recordings, artists_to_recordings):
           var db = require('@arangodb').db;
           db._query(`
             FOR doc IN @users_to_artists  
-            UPSERT {_key: doc._key} INSERT doc UPDATE {year: doc.year} IN users_to_artists`,
+            UPSERT {_key: doc._key} INSERT doc UPDATE {years: doc.years} IN users_to_artists`,
             {users_to_artists:params.users_to_artists}
            )
     }
@@ -143,7 +143,7 @@ def add_edges(users_to_artists, users_to_recordings, artists_to_recordings):
           var db = require('@arangodb').db;
           db._query(`
             FOR doc IN @users_to_recordings
-            UPSERT {_key: doc._key} INSERT doc UPDATE {year: doc.year} IN users_to_recordings`,
+            UPSERT {_key: doc._key} INSERT doc UPDATE {years: doc.years} IN users_to_recordings`,
             {users_to_recordings:params.users_to_recordings}
            )
     }
@@ -213,6 +213,7 @@ if __name__ == '__main__':
         inquirer.List('choice',
                       message="What do you want to do?",
                       choices=[".", 'Setup database', "Clear Database!!"],
+                      carousel=True
                       ),
     ]
     answers = inquirer.prompt(questions)
