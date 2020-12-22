@@ -75,7 +75,7 @@ def add_nodes(user, artists, recordings):
       function(params) {
           var db = require('@arangodb').db;
           db._query(`
-            UPSERT @user INSERT @user UPDATE {} IN users`,
+            INSERT @user IN users OPTIONS {ignoreErrors: true}`,
             {user:params.user}
            )
     }
@@ -92,7 +92,7 @@ def add_nodes(user, artists, recordings):
           var db = require('@arangodb').db;
           db._query(`
           FOR doc IN @artists
-           UPSERT {_key: doc._key} INSERT doc UPDATE {} IN artists`, 
+           INSERT doc IN artists OPTIONS {ignoreErrors: true}`, 
             {artists:params.artists}
            )
     }
@@ -109,7 +109,7 @@ def add_nodes(user, artists, recordings):
           var db = require('@arangodb').db;
           db._query(`
             FOR doc IN @recordings\n
-            UPSERT {_key: doc._key} INSERT doc UPDATE {} IN recordings`,
+            INSERT doc IN recordings OPTIONS {ignoreErrors: true}`,
             {recordings:params.recordings}
            )
     }
@@ -127,7 +127,7 @@ def add_edges(users_to_artists, users_to_recordings, artists_to_recordings):
           var db = require('@arangodb').db;
           db._query(`
             FOR doc IN @users_to_artists  
-            UPSERT {_key: doc._key} INSERT doc UPDATE {years: doc.years} IN users_to_artists`,
+            INSERT doc IN users_to_artists OPTIONS {ignoreErrors: true}`,
             {users_to_artists:params.users_to_artists}
            )
     }
@@ -143,7 +143,7 @@ def add_edges(users_to_artists, users_to_recordings, artists_to_recordings):
           var db = require('@arangodb').db;
           db._query(`
             FOR doc IN @users_to_recordings
-            UPSERT {_key: doc._key} INSERT doc UPDATE {years: doc.years} IN users_to_recordings`,
+            INSERT doc IN users_to_recordings OPTIONS {ignoreErrors: true}`,
             {users_to_recordings:params.users_to_recordings}
            )
     }
@@ -159,7 +159,7 @@ def add_edges(users_to_artists, users_to_recordings, artists_to_recordings):
           var db = require('@arangodb').db;
           db._query(`
             FOR doc IN @artists_to_recordings
-            UPSERT {_key: doc._key} INSERT doc UPDATE {} IN artists_to_recordings`,
+            INSERT doc IN artists_to_recordings OPTIONS {ignoreErrors: true}`,
             {artists_to_recordings:params.artists_to_recordings}
            )
     }

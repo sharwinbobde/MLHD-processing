@@ -23,6 +23,7 @@ np.printoptions()
 
 
 def threaded_scrobble_processing(loc):
+    part = int(re.search(r"(?<=MLHD_)[\d]*(?=\/)", loc).group(0))
     inner_file = open(loc, 'rb')
     scrobble_tsv_filename = loc + ".tsv"
     # unzip scrobble file
@@ -31,7 +32,7 @@ def threaded_scrobble_processing(loc):
             shutil.copyfileobj(f_in, f_out)
 
     # Process files
-    processor = ScrobbleProcessor(scrobble_tsv_filename)
+    processor = ScrobbleProcessor(scrobble_tsv_filename, part)
     processor.start()
     return
 

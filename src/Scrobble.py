@@ -13,8 +13,9 @@ coding_kernal_matrix = np.array([[0b100], [0b010], [0b001]], dtype=np.uint8)
 
 
 class ScrobbleProcessor:
-    def __init__(self, filename: str):
+    def __init__(self, filename: str, part: int):
         self.filename = filename
+        self.part = part
 
         self.artists = set()
         self.recordings = set()
@@ -34,9 +35,9 @@ class ScrobbleProcessor:
         self.users_to_artists = df1 \
             .apply(
                 lambda x: {
-                    "_key": user + "_to_" + x[0],
                     "_from": "users/" + user, "_to": "artists/" + x[0],
                     "years": {"yr_"+str(x[1]): x[2]},
+                    "part": self.part
                 },
                 axis=1) \
             .to_numpy().tolist()
@@ -55,10 +56,9 @@ class ScrobbleProcessor:
         self.users_to_recordings = df2 \
             .apply(
                 lambda x: {
-                    "_key": user + "_to_" + x[0],
                     "_from": "users/" + user, "_to": "recordings/" + x[0],
-                    # "count": x[1],
                     "years": {"yr_"+str(x[1]): x[2]},
+                    "part": self.part
 
                 }, axis=1) \
             .to_numpy().tolist()
@@ -78,7 +78,7 @@ class ScrobbleProcessor:
             .apply(
                 lambda x: {
                     "_from": "artists/" + x[0], "_to": "recordings/" + x[1],
-                    "_key": x[0] + "_to_" + x[1]
+                    "part": self.part
                 },
                 axis=1) \
             .to_numpy().tolist()

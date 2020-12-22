@@ -6,7 +6,8 @@
 n_cpu = 12
 # memory_avail_GB = 4.5
 
-dataset_directory = "/run/media/sharwinbobde/SharwinThesis/MLHD/"
+# dataset_directory = "/run/media/sharwinbobde/SharwinThesis/MLHD/"
+dataset_directory = "/run/media/sharwinbobde/SharwinBackup/MLHD/"
 temp_extraction_destination = "/run/media/sharwinbobde/3ab7f23d-ffe7-4af6-a60f-7eb1e64c383c/home/testpartition/MLHD_temp"
 # separate partition on the SSD
 
