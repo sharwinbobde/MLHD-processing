@@ -96,7 +96,7 @@ class ScrobbleProcessor:
     def start(self):
         # print("here")
         user = re.search(r'(?!\/)[^\/\.]*(?=\.)', self.filename).group(0)
-        df = pd.read_csv(self.filename, sep='\t', header=None)
+        df = pd.read_csv(self.filename, sep='\t', header=None, low_memory=False)
 
         df = df.rename(columns={"0": "timestamp", "1": "artist", "2": "release", "3": "recording"})
         scrobble = df.to_numpy()
