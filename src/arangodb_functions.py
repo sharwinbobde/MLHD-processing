@@ -208,11 +208,41 @@ def clear_database():
     db.dropAllCollections()
 
 
+def delete_edges_from_a_chunk(part_number: int):
+    db = conn[DatabaseConstants.db_name]
+    aql = '''
+        FOR doc IN users_to_artists
+            FILTER doc.part == ''' + str(part_number) + '''
+            REMOVE doc IN users_to_artists OPTIONS { ignoreErrors: true }
+        '''
+    db.AQLQuery(aql)
+    print("1/3 done")
+    aql = '''
+        FOR doc IN users_to_recordings
+            FILTER doc.part == ''' + str(part_number) + '''
+            REMOVE doc IN users_to_recordings OPTIONS { ignoreErrors: true }
+        '''
+    db.AQLQuery(aql)
+    print("2/3 done")
+    aql = '''
+        FOR doc IN artists_to_recordings
+            FILTER doc.part == ''' + str(part_number) + '''
+            REMOVE doc IN artists_to_recordings OPTIONS { ignoreErrors: true }
+        '''
+    db.AQLQuery(aql)
+    print("3/3 done")
+    print("Job Completed\n")
+
+
 if __name__ == '__main__':
     questions = [
         inquirer.List('choice',
-                      message="What do you want to do?",
-                      choices=[".", 'Setup database', "Clear Database!!"],
+                      message="What do you want to do? ",
+                      choices=[".",
+                               'Setup database',
+                               "Remove Edges from a dataset chunk",
+                               "Clear Database!!",
+                               ],
                       carousel=True
                       ),
     ]
@@ -229,3 +259,7 @@ if __name__ == '__main__':
             clear_database()
         else:
             print("Phew! everything is still there.")
+
+    elif answers["choice"] == "Remove Edges from a dataset chunk":
+        part = int(input("Please enter the part number (e.g. 26 for MLHD_026.tar): "))
+        delete_edges_from_a_chunk(part)
