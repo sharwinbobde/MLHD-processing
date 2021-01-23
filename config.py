@@ -16,7 +16,7 @@ arangodb_password = "Happy2Help!"
 
 # user should've heard/encountered this song more than these many times to be counted in the graph database.
 # Keep in mind the dataset is already sanitized and all events have been heard > 30s
-listen_lower_threshold = 30
+listen_lower_threshold = 25
 
 processes_per_chunk = n_cpu
 
