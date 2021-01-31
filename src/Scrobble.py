@@ -95,20 +95,20 @@ class ScrobbleProcessor:
         # ===========================================
 
         # artist to recording; artist and recording should exist
-        # df3 = df[df.fpc & 0b101 == 0b101] \
-        #     [['timestamp', 'artist', 'recording', 'year']] \
-        #     .groupby(['artist', 'recording', 'year']).count() \
-        #     .query('timestamp >= ' + str(config.listen_lower_threshold)) \
-        #     .reset_index()
-        #
-        # self.artists_to_recordings = df3 \
-        #     .apply(
-        #     lambda x: {
-        #         "_from": "artists/" + x[0], "_to": "recordings/" + x[1],
-        #         "part": self.part
-        #     },
-        #     axis=1) \
-        #     .to_numpy().tolist()
+        df3 = df[df.fpc & 0b101 == 0b101] \
+            [['timestamp', 'artist', 'recording', 'year']] \
+            .groupby(['artist', 'recording', 'year']).count() \
+            .query('timestamp >= ' + str(config.listen_lower_threshold)) \
+            .reset_index()
+
+        self.artists_to_recordings = df3 \
+            .apply(
+            lambda x: {
+                "_from": "artists/" + x[0], "_to": "recordings/" + x[1],
+                "part": self.part
+            },
+            axis=1) \
+            .to_numpy().tolist()
 
     def free_memory(self):
         del self.filename
