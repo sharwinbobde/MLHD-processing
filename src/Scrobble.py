@@ -2,12 +2,13 @@
 #  Coded for final Thesis project for Masters in Computer Science at Delft university of Technology.
 #  Contact s.p.bobde@student.tudelft.nl or bsharwin@gmail.com for any queries.
 
-import numpy as np
 import re
-import src.arangodb_functions as af
+
+import numpy as np
 import pandas as pd
+
 import config
-import gc
+import src.arangodb_functions as af
 
 coding_kernal_matrix = np.array([[0b100], [0b010], [0b001]], dtype=np.uint8)
 from collections import defaultdict
@@ -27,18 +28,15 @@ class ScrobbleProcessor:
 
     def collect_nodes_and_edges_from_df(self, user, df: pd.DataFrame):
         # user to artist; artist should exist
-        df1 = df[df.fpc & 0b100 == 0b100]
-        valid = df1 \
-            [['timestamp', 'artist']] \
-            .groupby(['artist']) \
-            .count() \
-            .reset_index()
-        valid = valid[valid.timestamp > config.listen_lower_threshold].artist.tolist()
-        df1 = df1[df1['artist'].isin(valid)] \
+        # TODO add when user was made 1st log. MLHD has this info in a file
+        df1 = df[df.fpc & 0b100 == 0b100] \
             [['timestamp', 'artist', 'year']] \
             .groupby(['artist', 'year']) \
             .count() \
+            .query('timestamp >= ' + str(config.listen_lower_threshold)) \
             .reset_index()
+
+        # TODO make node keys int and add uuid key
 
         # dict of dict
         u_2_a_temp = defaultdict(dict)
@@ -61,18 +59,11 @@ class ScrobbleProcessor:
         # ===========================================
 
         # user to recording; recording should exist
-        df2 = df[df.fpc & 0b001 == 0b001]
-
-        valid = df2 \
+        df2 = df[df.fpc & 0b001 == 0b001] \
             [['timestamp', 'recording', 'year']] \
             .groupby(['recording', 'year']) \
             .count() \
-            .reset_index()
-        valid = valid[valid.timestamp > config.listen_lower_threshold].recording.tolist()
-        df2 = df2[df2['recording'].isin(valid)] \
-            [['timestamp', 'recording', 'year']] \
-            .groupby(['recording', 'year']) \
-            .count() \
+            .query('timestamp >= ' + str(config.listen_lower_threshold)) \
             .reset_index()
 
         # dict of dict
@@ -97,17 +88,18 @@ class ScrobbleProcessor:
         # artist to recording; artist and recording should exist
         df3 = df[df.fpc & 0b101 == 0b101] \
             [['timestamp', 'artist', 'recording', 'year']] \
-            .groupby(['artist', 'recording', 'year']).count() \
+            .groupby(['artist', 'recording', 'year']) \
+            .count() \
             .query('timestamp >= ' + str(config.listen_lower_threshold)) \
             .reset_index()
 
         self.artists_to_recordings = df3 \
             .apply(
-            lambda x: {
-                "_from": "artists/" + x[0], "_to": "recordings/" + x[1],
-                "part": self.part
-            },
-            axis=1) \
+                lambda x: {
+                    "_from": "artists/" + x[0], "_to": "recordings/" + x[1],
+                    "part": self.part
+                },
+                axis=1) \
             .to_numpy().tolist()
 
     def free_memory(self):

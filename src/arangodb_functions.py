@@ -2,12 +2,11 @@
 #  Coded for final Thesis project for Masters in Computer Science at Delft university of Technology.
 #  Contact s.p.bobde@student.tudelft.nl or bsharwin@gmail.com for any queries.
 
-from pyArango.connection import *
-from pyArango.database import *
-from pyArango.query import *
-import config
 import inquirer
 import requests
+from pyArango.connection import *
+
+import config
 
 # Global db reference
 conn = Connection(username=config.arangodb_user, password=config.arangodb_password)
@@ -193,10 +192,10 @@ def setup():
         db = conn.createDatabase("MLHD_processing")
     except Exception:
         db = conn["MLHD_processing"]
-    db.createCollection(name=DatabaseConstants.users)
-    db.createCollection(name=DatabaseConstants.artists)
-    db.createCollection(name=DatabaseConstants.recordings)
-    db.createCollection(name=DatabaseConstants.ABz_low_level)
+    db.createCollection(name=DatabaseConstants.users, keyOptions={type: "autoincrement"})
+    db.createCollection(name=DatabaseConstants.artists, keyOptions={type: "autoincrement"})
+    db.createCollection(name=DatabaseConstants.recordings, keyOptions={type: "autoincrement"})
+    db.createCollection(name=DatabaseConstants.ABz_low_level, keyOptions={type: "autoincrement"})
 
     db.createCollection("Edges", name=DatabaseConstants.users_to_artists)
     db.createCollection("Edges", name=DatabaseConstants.users_to_recordings)
