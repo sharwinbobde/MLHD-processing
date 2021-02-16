@@ -28,15 +28,12 @@ class ScrobbleProcessor:
 
     def collect_nodes_and_edges_from_df(self, user, df: pd.DataFrame):
         # user to artist; artist should exist
-        # TODO add when user was made 1st log. MLHD has this info in a file
         df1 = df[df.fpc & 0b100 == 0b100] \
             [['timestamp', 'artist', 'year']] \
             .groupby(['artist', 'year']) \
             .count() \
             .query('timestamp >= ' + str(config.listen_lower_threshold)) \
             .reset_index()
-
-        # TODO make node keys int and add uuid key
 
         # dict of dict
         u_2_a_temp = defaultdict(dict)
@@ -95,11 +92,11 @@ class ScrobbleProcessor:
 
         self.artists_to_recordings = df3 \
             .apply(
-                lambda x: {
-                    "_from": "artists/" + x[0], "_to": "recordings/" + x[1],
-                    "part": self.part
-                },
-                axis=1) \
+            lambda x: {
+                "_from": "artists/" + x[0], "_to": "recordings/" + x[1],
+                "part": self.part
+            },
+            axis=1) \
             .to_numpy().tolist()
 
     def free_memory(self):
