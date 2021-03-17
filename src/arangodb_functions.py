@@ -4,6 +4,7 @@
 
 import inquirer
 import requests
+from config import DatabaseConstants
 from pyArango.connection import *
 
 import config
@@ -18,7 +19,7 @@ class CursorProcessor:
         self.aql = aql
         self.batchSize = batchSize
         self.cursor_id = None
-        self.has_more = False
+        self.has_more = True
 
     def next_batch(self):
         if self.cursor_id is None:
@@ -50,20 +51,6 @@ class CursorProcessor:
         else:
             return None
 
-
-# We declare this just for refactoring and avoiding incorrect literals.
-class DatabaseConstants:
-    db_name = "MLHD_processing"
-
-    users = "users"
-    artists = "artists"
-    releases = "releases"
-    recordings = "recordings"
-    ABz_low_level = "AcousticBrainz_LowLevel"
-
-    users_to_artists = "users_to_artists"
-    users_to_recordings = "users_to_recordings"
-    artists_to_recordings = "artists_to_recordings"
 
 
 def add_nodes(user, artists, recordings):
